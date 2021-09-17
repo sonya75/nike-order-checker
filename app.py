@@ -138,17 +138,12 @@ class NikeOrderCheck:
 
     def get_order_status(self):
         # For reference, user-agent is not a required header but I still included it!
-        headers = {
-            "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
-            "x-nike-visitorid":self.uuid,
-            "x-nike-visitid":"1",
-            "appid":"orders"
-        }
+        headers = {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36","Accept":"application/json","Referer":"https://www.nike.com/","Origin":"https://www.nike.com","nike-api-caller-id":"com.nike:sse.orders"}
         # Checks if use_proxies is True
         if use_proxies:
-            response = requests.get(f"https://api.nike.com/order_mgmt/user_order_details/v2/{self.order_number}?filter=email({self.order_email})", headers=headers, proxies=Proxy.get_proxy(proxy_list))
+            response = requests.get("https://api.nike.com/orders/summary/v1/"+self.order_number+"?locale=en_us&country=US&language=en",params={"email":self.order_email}, headers=headers, proxies=Proxy.get_proxy(proxy_list))
         else:
-            response = requests.get(f"https://api.nike.com/order_mgmt/user_order_details/v2/{self.order_number}?filter=email({self.order_email})", headers=headers)
+            response = requests.get("https://api.nike.com/orders/summary/v1/"+self.order_number+"?locale=en_us&country=US&language=en",params={"email":self.order_email}, headers=headers)
         # Checking if the request was successful
         if response.status_code == 200:
             Logger.success(f"[{self.order_email}][{self.order_number}] Got order status!")
@@ -164,15 +159,15 @@ class NikeOrderCheck:
             csv_file = csv.writer(output_file)
             # Passing in a list of values that we want the row to contain. In this case : [order_date, product_sku, product_size, order_status, order_email, order_number, address, credit_card_last_4, order_total]
             data = [
-                self.order['orderCreateDate'], 
-                f"{self.order['orderLines'][0]['styleNumber']}-{self.order['orderLines'][0]['colorCode']}", 
-                self.order['orderLines'][0]['displaySize'], 
-                self.order['status'], 
+                self.order['transaction']['orderDate'], 
+                self.order['group'][0]['orderItems'][0]['product']['styleColor'], 
+                self.order['group'][0]['orderItems'][0]['product']['size'],
+                self.order['fullOrderStatus']['status'], 
                 self.order_email, 
                 self.order_number,
-                f"{self.order['orderLines'][0]['shipTo']['address']['address1']} {self.order['orderLines'][0]['shipTo']['address']['city']}, {self.order['orderLines'][0]['shipTo']['address']['state'] if 'state' in self.order['orderLines'][0]['shipTo']['address'].keys() else ''} {self.order['orderLines'][0]['shipTo']['address']['zipCode']}, {self.order['orderLines'][0]['shipTo']['address']['country']}",
-                self.order['paymentMethods'][0]['displayCreditCardNumber'],
-                self.order['totalAmount']
+                f"{self.order['shipFrom']['address']['address1']} {self.order['shipFrom']['address']['city']}, {self.order['shipFrom']['address']['state'] if 'state' in self.order['shipFrom']['address'].keys() else ''} {self.order['shipFrom']['address']['zipCode']}, {self.order['shipFrom']['address']['country']}",
+                f"XXXXXXXXXXXX{self.order['payment'][0]['paymentDisplayNumber']}",
+                f"{self.order['transaction']['orderTotal']}"
             ]
             # Appends to the csv file (Adds one line)
             csv_file.writerow(data)
